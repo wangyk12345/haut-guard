@@ -1,0 +1,42 @@
+appId: com.hautguard.app
+productName: HAUT Guard
+copyright: Copyright © 2026 HAUT Guard
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - package.json
+  - src/**/*
+  - "!**/*.map"
+  - "!**/__pycache__/**"
+
+# 托盘/窗口图标需要按真实路径读取, 从 asar 里解出来更稳妥
+asarUnpack:
+  - src/assets/**
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  artifactName: HAUT-Guard-Setup-${version}.exe
+
+nsis:
+  # 一键安装: 双击即装, 不需要任何选择, 装完自动启动
+  oneClick: true
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: HAUT Guard
+  runAfterFinish: true
+  # 卸载时保留用户配置与账号, 避免误删
+  deleteAppDataOnUninstall: false
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  artifactName: HAUT-Guard-Setup-${version}.exe

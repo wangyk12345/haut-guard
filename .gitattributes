@@ -1,0 +1,7 @@
+# 统一换行: 仓库内用 LF, 图片按二进制处理
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.jpg binary
+*.zip binary
+*.exe binary

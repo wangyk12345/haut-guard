@@ -1,0 +1,20 @@
+# ---- 依赖与构建产物(体积巨大, 不入库)
+node_modules/
+dist/
+build/icon.png
+*.log
+npm-debug.log*
+
+# ---- 本地私有: 含真实账号/内网 IP 的真机截图与抓包, 以及校方/厂商的前端代码副本
+# (见仓库根的 README「关于隐私与版权」一节)
+_private/
+tools/gateway_js/
+tools/login_page.html
+
+# ---- 运行时产物
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+*.tmp
+*.tsbuildinfo

@@ -1,0 +1,22 @@
+name: test
+
+# 只跑纯 Node 的测试: 不需要 Electron 二进制, 也不需要 Python。
+# 覆盖: 存储层 / 状态解析回归 / 协议对拍(2615 组向量) / 模拟网关端到端。
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 运行测试
+        run: node test/all.js

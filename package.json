@@ -1,0 +1,30 @@
+{
+  "name": "haut-guard",
+  "productName": "HAUT Guard",
+  "version": "1.0.0",
+  "description": "深澜(SRun)校园网认证客户端 · 液态玻璃界面",
+  "author": "wangyk12345",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wangyk12345/haut-guard.git"
+  },
+  "homepage": "https://github.com/wangyk12345/haut-guard#readme",
+  "bugs": {
+    "url": "https://github.com/wangyk12345/haut-guard/issues"
+  },
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "test": "node test/all.js",
+    "test:vectors": "node test/vectors.test.js",
+    "test:mock": "node test/mock.test.js",
+    "dist": "electron-builder --win --config electron-builder.yml"
+  },
+  "devDependencies": {
+    "electron": "^44.4.2",
+    "electron-builder": "^26.15.3"
+  }
+}

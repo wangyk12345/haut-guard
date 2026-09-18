@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark" data-accent="cyan" data-chrome="mac">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none';" />
+  <meta name="color-scheme" content="dark light" />
+  <title>HAUT Guard</title>
+  <link rel="stylesheet" href="./styles/glass.css" />
+</head>
+<body>
+  <!-- ===== 窗口氛围背景: 深色渐变 + 缓慢漂移的彩色光斑, 供玻璃折射 ===== -->
+  <div class="aura" aria-hidden="true">
+    <span class="aura__blob aura__blob--1"></span>
+    <span class="aura__blob aura__blob--2"></span>
+    <span class="aura__blob aura__blob--3"></span>
+    <span class="aura__grain"></span>
+  </div>
+
+  <!-- ===== 标题栏 (可拖动) ===== -->
+  <header class="titlebar" id="titlebar">
+    <div class="lights" id="lights">
+      <button class="light light--close" data-win="close" type="button" title="关闭" aria-label="关闭窗口">
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2.6 2.6 L7.4 7.4 M7.4 2.6 L2.6 7.4" /></svg>
+      </button>
+      <button class="light light--min" data-win="minimize" type="button" title="最小化" aria-label="最小化窗口">
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2.4 5 H7.6" /></svg>
+      </button>
+      <button class="light light--zoom" data-win="zoom" type="button" title="隐藏到托盘" aria-label="隐藏到托盘">
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 2.4 V7.6 M2.4 5 H7.6" /></svg>
+      </button>
+    </div>
+
+    <div class="titlebar__brand">
+      <span class="titlebar__dot" aria-hidden="true"></span>
+      <span class="titlebar__name">HAUT Guard</span>
+    </div>
+
+    <button class="ghostbtn" id="themeToggle" type="button" title="切换明暗外观" aria-label="切换明暗外观">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M16.2 12.4A6.8 6.8 0 0 1 7.6 3.8a6.9 6.9 0 1 0 8.6 8.6Z" />
+      </svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true">
+        <circle cx="10" cy="10" r="3.6" />
+        <path d="M10 1.8v2.1M10 16.1v2.1M18.2 10h-2.1M3.9 10H1.8M15.8 4.2l-1.5 1.5M5.7 14.3l-1.5 1.5M15.8 15.8l-1.5-1.5M5.7 5.7 4.2 4.2" />
+      </svg>
+    </button>
+
+    <!-- Windows 风格窗口按钮: 仅 html[data-chrome="windows"] 显示 (此时左上角不再显示红黄绿)。
+         行为复用 app.js 现有的 [data-win] 通用绑定: close -> bridge.win.close() (收进托盘),
+         minimize -> bridge.win.minimize()。标题栏整条可拖动, 这里 no-drag。 -->
+    <div class="wincontrols" id="winControls">
+      <button class="winbtn" data-win="minimize" type="button" title="最小化" aria-label="最小化窗口">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.4 6h7.2" /></svg>
+      </button>
+      <button class="winbtn winbtn--close" data-win="close" type="button" title="关闭到托盘" aria-label="关闭到托盘">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.9 2.9l6.2 6.2M9.1 2.9l-6.2 6.2" /></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== 可滚动主体 ===== -->
+  <main class="scroll" id="scroll">
+    <div class="stack">
+
+      <!-- ---------- 1. 状态环 + 本次会话指标 (左右分栏: 保证主按钮一屏可见) ---------- -->
+      <section class="hero glass" data-tilt id="hero">
+        <div class="hero__ring">
+          <svg class="ring" viewBox="0 0 160 160" aria-hidden="true">
+            <defs>
+              <linearGradient id="gradOffline" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#8ea2c9" />
+                <stop offset="55%" stop-color="#5f739e" />
+                <stop offset="100%" stop-color="#7f93ba" />
+              </linearGradient>
+              <linearGradient id="gradConnecting" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#5ac8fa" stop-opacity=".15" />
+                <stop offset="42%" stop-color="#5ac8fa" />
+                <stop offset="100%" stop-color="#8f7bff" />
+              </linearGradient>
+              <linearGradient id="gradOnline" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#5ce7c4" />
+                <stop offset="52%" stop-color="#33c9f5" />
+                <stop offset="100%" stop-color="#6f8bff" />
+              </linearGradient>
+              <linearGradient id="gradError" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ff9f7a" />
+                <stop offset="100%" stop-color="#ff5f7e" />
+              </linearGradient>
+              <filter id="ringGlow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="5.4" result="b" />
+                <feMerge>
+                  <feMergeNode in="b" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+
+            <circle class="ring__track" cx="80" cy="80" r="66" />
+            <circle class="ring__halo" cx="80" cy="80" r="66" />
+            <circle class="ring__glow" cx="80" cy="80" r="66" filter="url(#ringGlow)" />
+            <circle class="ring__prog" cx="80" cy="80" r="66" pathLength="100" />
+            <g class="ring__spin" pathLength="100">
+              <circle class="ring__arc" cx="80" cy="80" r="66" pathLength="100" />
+            </g>
+          </svg>
+
+          <div class="hero__core">
+            <span class="hero__state" id="stateLabel">未连接</span>
+            <span class="hero__user" id="stateUser"></span>
+          </div>
+        </div>
+
+        <div class="hero__side">
+          <span class="pill" id="heroChip">
+            <span class="pill__dot" id="heroChipDot"></span>
+            <span class="pill__text" id="heroChipText">等待连接</span>
+          </span>
+
+          <!-- 网关版本 / 引导小字 (renderHero 每秒更新, id 必须存在) -->
+          <span class="hero__hint" id="heroHint"></span>
+
+          <article class="metric" data-tilt>
+            <span class="metric__icon metric__icon--flow">
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M3.4 13.6 7.2 9.4l3 2.6 5.9-6.4" />
+                <path d="M12.6 5.6h3.5v3.4" />
+              </svg>
+            </span>
+            <span class="metric__body">
+              <span class="metric__label">本次流量</span>
+              <span class="metric__value" id="metricFlow" data-fmt="bytes">0 B</span>
+            </span>
+          </article>
+
+          <article class="metric" data-tilt>
+            <span class="metric__icon metric__icon--time">
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <circle cx="10" cy="10.4" r="6.6" />
+                <path d="M10 6.6v4l2.6 1.6" />
+              </svg>
+            </span>
+            <span class="metric__body">
+              <span class="metric__label">在线时长</span>
+              <span class="metric__value" id="metricTime" data-fmt="time">0 分</span>
+            </span>
+          </article>
+        </div>
+      </section>
+
+      <!-- ---------- 2. 次要信息: 累计流量/累计时长/余额 + 速率/网关 ---------- -->
+      <div class="subbar glass" id="subbar">
+        <span class="subbar__item" id="subTotal">
+          <i>累计流量</i><b id="subTotalBytes">--</b>
+        </span>
+        <span class="subbar__sep" aria-hidden="true"></span>
+        <span class="subbar__item" id="subDuration">
+          <i>累计时长</i><b id="subTotalSeconds">--</b>
+        </span>
+        <span class="subbar__sep" id="subBalanceSep" aria-hidden="true"></span>
+        <span class="subbar__item" id="subBalance">
+          <i>账户余额</i><b id="subBalanceValue">--</b>
+        </span>
+      </div>
+
+      <!-- ---------- 3. 登录失败等内联提示 ---------- -->
+      <div class="notice" id="notice" hidden>
+        <svg class="notice__ico" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M10 2.6 18.4 17H1.6L10 2.6Z" />
+          <path d="M10 7.6v4.1M10 14.2v.1" />
+        </svg>
+        <span class="notice__text">
+          <b class="notice__title">连接失败</b>
+          <i class="notice__msg" id="noticeMsg"></i>
+        </span>
+        <button class="notice__close" id="noticeClose" type="button" aria-label="关闭提示">
+          <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3 L9 9 M9 3 L3 9" /></svg>
+        </button>
+      </div>
+
+      <!-- ---------- 4. 速率曲线 (下行/上行双线) ---------- -->
+      <!-- 数据源: 本机网卡的字节计数差分 (网关不提供实时流量), 因此文案只提"本机网卡" -->
+      <section class="spark glass" data-tilt>
+        <div class="spark__head"
+             title="速率取自本机网卡的上行/下行字节统计，与网关无关；网关不提供实时流量">
+          <span class="spark__titlebox">
+            <span class="spark__title">实时速率</span>
+            <span class="spark__sub">本机网卡</span>
+          </span>
+          <span class="spark__legend">
+            <i class="legend legend--down"></i><span id="legendDown">下载 0 KB/s</span>
+            <i class="legend legend--up"></i><span id="legendUp">上传 0 KB/s</span>
+          </span>
+        </div>
+        <canvas class="spark__canvas" id="chart" height="52"></canvas>
+        <p class="spark__empty" id="chartEmpty"><span>暂无采样数据</span></p>
+      </section>
+
+      <!-- ---------- 5. 账号表单 ---------- -->
+      <section class="form glass" data-tilt>
+        <div class="acct" id="acctRow">
+          <button class="select" id="acctButton" type="button" aria-haspopup="listbox" aria-expanded="false">
+            <span class="select__avatar" id="acctAvatar">＋</span>
+            <span class="select__body">
+              <span class="select__name" id="acctName">未添加账号</span>
+              <span class="select__sub" id="acctSub">点击右侧添加</span>
+            </span>
+            <svg class="select__chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.6 4.6 6 8l3.4-3.4" /></svg>
+          </button>
+
+          <button class="iconbtn" id="acctAdd" type="button" title="添加账号" aria-label="添加账号">
+            <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 4v10M4 9h10" /></svg>
+          </button>
+          <button class="iconbtn iconbtn--danger" id="acctRemove" type="button" title="删除当前账号" aria-label="删除当前账号">
+            <svg viewBox="0 0 18 18" aria-hidden="true">
+              <path d="M3.6 5.4h10.8M7.2 5.4V3.9h3.6v1.5M5.2 5.4l.7 8.1h6.2l.7-8.1" />
+              <path d="M8 7.8v3.4M10 7.8v3.4" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="acctmenu glass" id="acctMenu" hidden>
+          <div class="acctmenu__list" id="acctList" role="listbox" aria-label="账号列表"></div>
+          <button class="acctmenu__add" id="acctMenuAdd" type="button">
+            <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 4v10M4 9h10" /></svg>
+            <span>添加账号</span>
+          </button>
+        </div>
+
+        <label class="field" id="fieldUser">
+          <span class="field__label">学号</span>
+          <span class="field__box">
+            <svg class="field__ico" viewBox="0 0 18 18" aria-hidden="true">
+              <circle cx="9" cy="6.4" r="3.1" />
+              <path d="M3.4 15.2c.7-2.8 3-4.3 5.6-4.3s4.9 1.5 5.6 4.3" />
+            </svg>
+            <input id="inputUser" type="text" inputmode="numeric" autocomplete="username"
+                   spellcheck="false" placeholder="请输入学号 / 账号" />
+            <button class="field__act" id="clearUser" type="button" tabindex="-1" title="清空" aria-label="清空学号">
+              <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M4 4l6 6M10 4l-6 6" /></svg>
+            </button>
+          </span>
+        </label>
+
+        <label class="field" id="fieldPass">
+          <span class="field__label">密码</span>
+          <span class="field__box">
+            <svg class="field__ico" viewBox="0 0 18 18" aria-hidden="true">
+              <rect x="3.6" y="8" width="10.8" height="6.6" rx="2.2" />
+              <path d="M6.4 8V6.2a2.6 2.6 0 0 1 5.2 0V8" />
+            </svg>
+            <input id="inputPass" type="password" autocomplete="current-password"
+                   spellcheck="false" placeholder="请输入密码" />
+            <button class="field__act" id="eyePass" type="button" tabindex="-1" title="显示密码" aria-label="显示密码">
+              <svg class="ico ico--eye" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M1.9 10S4.9 5.2 10 5.2 18.1 10 18.1 10 15.1 14.8 10 14.8 1.9 10 1.9 10Z" />
+                <circle cx="10" cy="10" r="2.4" />
+              </svg>
+              <svg class="ico ico--eyeoff" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M3.2 6.3C2.3 7.4 1.9 8.4 1.9 8.4" />
+                <path d="M1.9 10S4.9 5.2 10 5.2c1 0 1.9.2 2.7.5" />
+                <path d="M16.4 7.2c1 .9 1.7 1.8 1.7 1.8S15.1 14.8 10 14.8c-1.2 0-2.3-.3-3.2-.7" />
+                <path d="M3.2 3.2 16.8 16.8" />
+              </svg>
+            </button>
+          </span>
+        </label>
+        <p class="fieldhint" id="fieldHint"></p>
+      </section>
+
+      <!-- ---------- 6. 开关组: 液态玻璃胶囊条 ----------
+           参考图那种"一条胶囊玻璃 + 图标上/文字下的条目"的做法。
+           语义差异: 这 4 个是可以同时打开的布尔开关 (不是互斥的单选 tab),
+           因此高亮胶囊不滑动、每个条目各自淡入/缩放出现。
+           开 = 磨砂高亮胶囊 + 强调色图标文字; 关 = 无高亮 + 次要色。
+           id 与 app.js 的 dom 映射一一对应 (事件绑定/配置写入逻辑未改)。 -->
+      <section class="switches glass" data-tilt id="switchBar">
+        <button class="sw" id="swRemember" type="button" role="switch" aria-checked="false"
+                title="在本机加密保存密码，下次无需重新输入" aria-label="记住密码">
+          <span class="sw__hi" aria-hidden="true"></span>
+          <svg class="sw__ico" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="4.1" y="10" width="15.8" height="10" rx="3.4" />
+            <path d="M7.9 10V7.7a4.1 4.1 0 0 1 8.2 0V10" />
+            <path d="M12 14.3v2.1" />
+          </svg>
+          <span class="sw__text">记住密码</span>
+        </button>
+        <button class="sw" id="swAuto" type="button" role="switch" aria-checked="false"
+                title="启动后使用当前账号自动连接" aria-label="自动登录">
+          <span class="sw__hi" aria-hidden="true"></span>
+          <svg class="sw__ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M13.8 3.1 5.7 13.4h5.5l-.9 7.4 8.1-10.4h-5.4z" />
+          </svg>
+          <span class="sw__text">自动登录</span>
+        </button>
+        <button class="sw" id="swReconnect" type="button" role="switch" aria-checked="false"
+                title="检测到掉线后自动重试" aria-label="断线自动重连">
+          <span class="sw__hi" aria-hidden="true"></span>
+          <svg class="sw__ico" viewBox="0 0 24 24" aria-hidden="true">
+            <g transform="translate(-1.1,-.2)">
+              <path d="M19.8 14.8A8.3 8.3 0 1 1 17.8 6.2L22.1 10.2" />
+              <path d="M22.1 4.7v5.4h-5.4" />
+            </g>
+          </svg>
+          <span class="sw__text">断线重连</span>
+        </button>
+        <button class="sw" id="swAutoLaunch" type="button" role="switch" aria-checked="false"
+                title="随系统启动并最小化到托盘" aria-label="开机自启">
+          <span class="sw__hi" aria-hidden="true"></span>
+          <svg class="sw__ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M17.5 7.1A7.8 7.8 0 1 1 6.5 7.1" />
+            <path d="M12 3.8v7.8" />
+          </svg>
+          <span class="sw__text">开机自启</span>
+        </button>
+      </section>
+
+      <!-- ---------- 「记住密码」关闭确认 (破坏性操作: 主进程会立刻删除已保存的密码) ----------
+           关闭开关时先滑出这一条, 确认后才真正写配置; 取消则开关回到"开"。
+           hidden 时 [hidden] 会 display:none, 不影响布局。 -->
+      <div class="confirmbar glass" id="rememberConfirm" hidden role="alertdialog"
+           aria-labelledby="rememberConfirmText">
+        <svg class="confirmbar__ico" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M10 2.6 18.4 17H1.6L10 2.6Z" />
+          <path d="M10 7.6v4.1M10 14.2v.1" />
+        </svg>
+        <span class="confirmbar__text" id="rememberConfirmText">
+          关闭后将从本机删除已保存的密码，且不可恢复
+        </span>
+        <button class="confirmbar__btn confirmbar__btn--danger" id="rememberConfirmOk" type="button">确认关闭</button>
+        <button class="confirmbar__btn" id="rememberCancel" type="button">取消</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== 底部固定操作区: 主按钮永远可见, 不需要滚动 ===== -->
+  <footer class="actionbar" id="actionbar">
+    <button class="primary" id="mainBtn" type="button" data-tilt>
+      <span class="primary__glow" aria-hidden="true"></span>
+      <span class="primary__spinner" aria-hidden="true"></span>
+      <span class="primary__label" id="mainLabel">连接校园网</span>
+    </button>
+
+    <!-- 4 个入口 = 4 个更小更扁的独立玻璃胶囊 (不是第二根开关条那种胶囊条) -->
+    <nav class="foot" id="foot">
+      <button data-sheet="settings" type="button" title="打开设置面板">设置</button>
+      <button data-sheet="diag" type="button" title="网络与网关诊断">诊断</button>
+      <button data-sheet="logs" type="button" title="查看运行日志">日志</button>
+      <button data-sheet="about" type="button" title="关于 HAUT Guard">关于</button>
+    </nav>
+  </footer>
+
+  <!-- ===== 面板层 ===== -->
+  <div class="scrim" id="scrim" hidden></div>
+  <section class="sheet glass" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+    <header class="sheet__head">
+      <h2 class="sheet__title" id="sheetTitle">设置</h2>
+      <button class="iconbtn" id="sheetClose" type="button" title="关闭" aria-label="关闭面板">
+        <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M5 5l8 8M13 5l-8 8" /></svg>
+      </button>
+    </header>
+    <div class="sheet__body" id="sheetBody"></div>
+    <footer class="sheet__foot" id="sheetFoot" hidden></footer>
+  </section>
+
+  <!-- ===== Toast ===== -->
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <!-- 预览环境提示徽标 (仅在 window.haut 缺失时显示) -->
+  <div class="mockbadge" id="mockBadge" hidden>预览数据</div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
